@@ -5,7 +5,6 @@ st.set_page_config(page_title="NOAA Wetterkarten-Generator", layout="centered")
 st.title("🗺️ Historischer Wetterkarten-Generator")
 st.write("Wählen Sie ein Jahr und einen Monat, um die offizielle NOAA-Wetterkarte (1836–2015) aufzurufen.")
 
-# Eingabemaske für den Nutzer
 jahr = st.number_input("Jahr eingeben (1836 - 2015):", min_value=1836, max_value=2015, value=1976, step=1)
 
 monate_dict = {
@@ -21,11 +20,9 @@ variable = st.selectbox("Wetter-Parameter:", [
     "Air Temperature (Lufttemperatur 2m)"
 ])
 
-# Variablen-Kürzel für die NOAA-Schnittstelle zuweisen
 var_code = "prmsl" if "Pressure" in variable else "air"
 
 if st.button("Wetterkarte generieren"):
-    # Generierung der exakten NOAA-Plot-URL basierend auf den Nutzereingaben
     noaa_url = (
         f"https://noaa.gov?"
         f"year={jahr}&month={monat_num}&year2={jahr}&month2={monat_num}&"
@@ -35,4 +32,3 @@ if st.button("Wetterkarte generieren"):
     
     st.success(f"Karte für {monat_name} {jahr} wurde berechnet!")
     st.markdown(f"[**👉 HIER KLICKEN: NOAA-Wetterkarte anzeigen**]({noaa_url})")
-    st.info("Hinweis: Da die NOAA die Grafiken live auf ihren US-Servern rendert, öffnet sich die Karte aus Sicherheits- und Performancegründen in einem neuen Tab.")
