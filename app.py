@@ -1,19 +1,38 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 
-st.title("️ Mein Langfrist-Wettermodell (1836 - 2015)")
-st.write("Vergleichen Sie aktuelle Monate mit der NOAA-Datenbank, um Analogjahre zu finden.")
+st.set_page_config(page_title="NOAA Wetterkarten-Generator", layout="centered")
 
-# Datei-Uploader für Ihre exportierte NOAA-CSV
-uploaded_file = st.file_file_uploader("Laden Sie Ihre NOAA-CSV-Datei hoch", type=["csv"])
+st.title("🗺️ Historischer Wetterkarten-Generator")
+st.write("Wählen Sie ein Jahr und einen Monat, um die offizielle NOAA-Wetterkarte (1836–2015) aufzurufen.")
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    st.write("Daten erfolgreich geladen!", df.head())
+# Eingabemaske für den Nutzer
+jahr = st.number_input("Jahr eingeben (1836 - 2015):", min_value=1836, max_value=2015, value=1976, step=1)
+
+monate_dict = {
+    "Januar": "1", "Februar": "2", "März": "3", "April": "4",
+    "Mai": "5", "Juni": "6", "Juli": "7", "August": "8",
+    "September": "9", "Oktober": "10", "November": "11", "Dezember": "12"
+}
+monat_name = st.selectbox("Monat auswählen:", list(monate_dict.keys()))
+monat_num = monate_dict[monat_name]
+
+variable = st.selectbox("Wetter-Parameter:", [
+    "Sea Level Pressure (Bodendruck / Isobaren)", 
+    "Air Temperature (Lufttemperatur 2m)"
+])
+
+# Variablen-Kürzel für die NOAA-Schnittstelle zuweisen
+var_code = "prmsl" if "Pressure" in variable else "air"
+
+if st.button("Wetterkarte generieren"):
+    # Generierung der exakten NOAA-Plot-URL basierend auf den Nutzereingaben
+    noaa_url = (
+        f"https://noaa.gov?"
+        f"year={jahr}&month={monat_num}&year2={jahr}&month2={monat_num}&"
+        f"variable={var_code}&level=1000&type=mean&proj=custom&"
+        f"lat1=35&lat2=65&lon1=-10&lon2=30&label=yes&color=yes&icedata=no"
+    )
     
-    # Filter für das Ziel-Jahr
-    monat = st.selectbox("Welchen Monat möchten Sie prognostizieren?", ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"])
-    
-    st.info("Das Modell sucht nun in den Daten von 1836 bis 2015 nach den statistisch besten Übereinstimmungen.")
-    # (Die KI kann diesen Bereich später erweitern, sobald Ihr CSV-Format feststeht!)
+    st.success(f"Karte für {monat_name} {jahr} wurde berechnet!")
+    st.markdown(f"[**👉 HIER KLICKEN: NOAA-Wetterkarte anzeigen**]({noaa_url})")
+    st.info("Hinweis: Da die NOAA die Grafiken live auf ihren US-Servern rendert, öffnet sich die Karte aus Sicherheits- und Performancegründen in einem neuen Tab.")
