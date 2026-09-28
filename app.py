@@ -15,11 +15,10 @@ CACHE_FILE = "ensemble_final.csv"
 
 st.set_page_config(page_title="Mühlberg Ensemble", layout="wide")
 
-# Schwarzer Hintergrund
 st.markdown("""
 <style>
 .stApp { background-color: #000000; }
-h1, h2, h3, p, div { color: #ffffff; }
+h1, h2, h3, p, div, label { color: #ffffff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -64,7 +63,6 @@ def parse_members(data, model_name: str):
 
 
 def build_ensemble():
-    """Holt GFS + AIFS, paart nach Extremwerten, gibt finale 50 Linien zurück."""
     gfs_data = fetch_ensemble("gfs025")
     aifs_data = fetch_ensemble("ecmwf_aifs025_ensemble")
 
@@ -76,7 +74,6 @@ def build_ensemble():
     gfs_cols = [c for c in merged.columns if c.startswith("gfs_")]
     aifs_cols = [c for c in merged.columns if c.startswith("aifs_")]
 
-    # Sortieren nach Mittelwert über alle Zeitpunkte
     gfs_sorted = merged[gfs_cols].mean().sort_values().index.tolist()
     aifs_sorted = merged[aifs_cols].mean().sort_values().index.tolist()
 
@@ -84,13 +81,11 @@ def build_ensemble():
 
     result = pd.DataFrame({"time": merged["time"]})
 
-    # Gepaarte Member
     for i in range(n_pairs):
         gfs_col = gfs_sorted[i]
         aifs_col = aifs_sorted[i]
         result[f"pair_{i+1:02d}"] = (merged[gfs_col] + merged[aifs_col]) / 2
 
-    # Extras (übrige AIFS Member)
     for i in range(n_pairs, len(aifs_sorted)):
         aifs_col = aifs_sorted[i]
         result[f"extra_{i-n_pairs+1:02d}"] = merged[aifs_col]
@@ -99,7 +94,7 @@ def build_ensemble():
 
 
 # ---------------------------------------------------------------------------
-# Sidebar: Daten erzeugen
+# Sidebar
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.header("Daten")
@@ -122,7 +117,7 @@ with st.sidebar:
 
 
 # ---------------------------------------------------------------------------
-# Daten laden
+# Laden
 # ---------------------------------------------------------------------------
 if not os.path.exists(CACHE_FILE):
     st.info("👉 Bitte links auf **'Ensemble jetzt erzeugen'** klicken.")
@@ -139,13 +134,10 @@ df = load_data()
 paired_cols = [c for c in df.columns if c.startswith("pair_")]
 extra_cols = [c for c in df.columns if c.startswith("extra_")]
 
-
 # ---------------------------------------------------------------------------
 # Plot
 # ---------------------------------------------------------------------------
-fig = __import__("plotly.graph_objects", fromlist=["go"]).Figure()
-
-import plotly.graph_objects as go  # noqa: E402
+import plotly.graph_objects as go
 
 fig = go.Figure()
 
@@ -171,7 +163,7 @@ for col in extra_cols:
         hovertemplate=f"<b>{col}</b><br>%{{x}}<br>%{{y:.1f}} °C<extra></extra>",
     ))
 
-# Mittelwert aller (weiß, dicker)
+# Mittelwert (weiß, dick)
 all_cols = paired_cols + extra_cols
 mean_series = df[all_cols].mean(axis=1)
 fig.add_trace(go.Scatter(
@@ -193,10 +185,51 @@ fig.update_layout(
     margin=dict(l=40, r=20, t=40, b=40),
 )
 
-st.plotly_chart(fig, width="stretch")
+# Plotly-Config: Modebar mit Kamera-Button (PNG-Export clientseitig)
+plotly_config = {
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": f"muehlberg_ensemble_{datetime.now():%Y%m%d_%H%M}",
+        "width": 1600,
+        "height": 800,
+        "scale": 2,
+    },
+    "displaylogo": False,
+}
+
+# ---------------------------------------------------------------------------
+# PNG-Export serverseitig (Kaleido)
+# ---------------------------------------------------------------------------
+png_bytes = None
+try:
+    png_bytes = fig.to_image(format="png", width=1600, height=800, scale=2)
+except Exception as e:
+    st.warning(f"Server-PNG fehlgeschlagen (Kamera-Button oben rechts funktioniert trotzdem): {e}")
+
+# ---------------------------------------------------------------------------
+# Anzeige
+# ---------------------------------------------------------------------------
+col_plot, col_dl = st.columns([5, 1])
+
+with col_plot:
+    st.plotly_chart(fig, width="stretch", config=plotly_config)
+
+with col_dl:
+    st.write("")
+    st.write("")
+    if png_bytes:
+        st.download_button(
+            label="⬇️ PNG",
+            data=png_bytes,
+            file_name=f"muehlberg_ensemble_{datetime.now():%Y%m%d_%H%M}.png",
+            mime="image/png",
+            use_container_width=True,
+        )
+    else:
+        st.caption("PNG-Download nicht verfügbar. Nutze das 📷-Symbol oben rechts im Plot.")
 
 st.caption(
     f"Gepaarte Member: {len(paired_cols)} (rot) · "
     f"Extras: {len(extra_cols)} (grün) · "
     f"Gesamt: {len(paired_cols) + len(extra_cols)} Linien"
-        )
+            )
